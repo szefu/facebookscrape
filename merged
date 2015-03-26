@@ -1,0 +1,6 @@
+import os
+
+os.system("python fbscrape.py")
+os.system("python extfriends.py")
+os.system("python graphcreate.py")
+os.system("./gephi/gephi/bin/gephi fbNet.gexf")

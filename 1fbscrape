@@ -1,0 +1,132 @@
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+from bs4 import BeautifulSoup
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.by import By
+import time
+from pyvirtualdisplay import Display
+#import wx
+#import easygui
+"""
+def ask(parent=None, message='', default_value=''):
+    dlg = wx.TextEntryDialog(parent, message, defaultValue=default_value)
+    dlg.ShowModal()
+    result = dlg.GetValue()
+    dlg.Destroy()
+    return result
+
+
+
+
+
+# Initialize wx App
+app = wx.App()
+app.MainLoop()
+
+
+# Call Dialog
+x = ask(message = 'Enter username')
+uname = x
+y = ask(message = 'Enter password')
+pw = y
+
+
+"""
+uname = raw_input("Enter username\n")
+uname = str(uname)
+pw = raw_input("Enter password\n")
+pw = str(pw)
+
+cr = open('credentials.txt', 'w')
+cr.write(uname)
+cr.write('\n')
+cr.write(pw)
+cr.close()
+
+display = Display(visible=0, size=(1366, 768))
+display.start()
+
+driver = webdriver.Firefox()
+print "Driver initiated"
+
+
+driver.get("https://www.facebook.com")
+
+inp = driver.find_element_by_id('email')
+inp.send_keys(uname)
+
+pas = driver.find_element_by_id('pass')
+pas.send_keys(pw)
+pas.send_keys(Keys.ENTER)
+#btn = driver.find_element_by_id('u_0_l')
+#btn.click()
+
+time.sleep(4)
+
+profile = driver.find_elements_by_class_name("_2dpe")
+
+profile[0].click()
+
+"""
+driver.get('https://www.facebook.com/sszeff/friends/')
+"""
+profurl = driver.current_url
+frurl = profurl + '/friends/'
+
+driver.get(frurl)
+
+
+
+
+#page = driver.page_source
+#soup = BeautifulSoup(page)
+#soup.prettify()
+#friends =soup.find_all('a', {'data-tab-key':'friends'})
+
+#print friends
+print "Fetching friends. Please wait."
+prior = 0
+count = 0
+#for i in range(0,100):
+while True:
+    driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+    time.sleep(0.25)
+    wind = driver.find_element_by_xpath("/html/body[1]")
+    size = wind.size
+    print size
+    print count
+    current = int(size['height'])
+    #WebDriverWait(driver, 30).until(EC.presence_of_all_elements_located((By.CLASS_NAME, "fsl")))
+    #current = len(WebDriverWait(driver, 30).until(EC.presence_of_all_elements_located((By.CLASS_NAME, "fsl"))))
+    #current = len(driver.find_elements_by_class_name('fsl'))
+    if count == 5:
+        break
+    if current == prior:
+        count = count + 1
+    else:
+        count = 0
+    prior = current
+
+
+
+page = driver.page_source
+page = str(page.encode('utf-8'))
+
+soup = BeautifulSoup(page)
+soup.prettify()
+
+frs = soup.find_all('div', {'class':'fsl'})
+
+
+f = open('friends.txt', 'w')
+for it in frs:
+	f.write(str(it))
+	f.write("\n")
+f.close()
+
+print "All friends fetched."
+print len(frs)
+
+
+#u_0_l

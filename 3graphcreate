@@ -1,0 +1,97 @@
+# -*- coding: utf-8 -*-
+import ast
+import sys
+from gexf import Gexf
+from unidecode import unidecode
+
+def removeNonAscii(s): return "".join(filter(lambda x: ord(x)<128, s))
+
+def querry_yes_or_no(question):
+    valid = {"yes": True, "y": True, "ye": True,
+             "no": False, "n": False}
+    default = "no"
+    if default is None:
+        prompt = " [y/n] "
+    elif default == "yes":
+        prompt = " [Y/n] "
+    elif default == "no":
+        prompt = " [y/N] "
+    else:
+        raise ValueError("invalid default answer: '%s'" % default)
+
+    while True:
+        sys.stdout.write(question + prompt)
+        choice = raw_input().lower()
+        if default is not None and choice == '':
+            return valid[default]
+        elif choice in valid:
+            return valid[choice]
+        else:
+            sys.stdout.write("Please respond with 'yes' or 'no' "
+                             "(or 'y' or 'n').\n")
+
+
+gexf = Gexf("Name", "FB Net")
+graph = gexf.addGraph("undirected", "static", "FB Net")
+
+# taking the choice whether to include ME in graph
+include_me = False
+include_me = querry_yes_or_no("Would would like to be included in the Network Graph? ")
+
+# get the nodes and edge list
+my_id = "0"
+node={}
+if include_me == True:
+    node[my_id]="ME"
+edge={}
+
+# obtaining nodes as friend name
+friends = open("frnames.txt")
+data = friends.read()
+data = data.split("\n")
+
+for line in data:
+    if len(line) > 0:
+        _value = line.split(":")
+        _id = _value[0].strip()
+        _name = _value[1].strip()
+        _name = unicode(_name,"UTF_8")
+        _name = unidecode(_name)
+        node[_id] = _name
+
+
+# adding me to all friends
+if include_me == True:
+    edge[my_id] = []
+    for _fr_id in node:
+        edge[my_id].append(_fr_id)
+
+#obtaining adjacency list for other friends
+mutualFriends = open("mutfr.txt")
+data = mutualFriends.read()
+data = data.split("\n")
+
+for line in data:
+    if len(line) > 0:
+        _value = line.split(":")
+        _id = _value[0].strip()
+        _list = _value[1].strip()
+        _list = ast.literal_eval(_list)
+        edge[_id] = _list
+
+
+# making the nodes
+for node_id, node_label in node.items():
+    graph.addNode(node_id, node_label)
+
+
+# making edges
+edge_id_count = 0
+for node_id, edge_list in edge.items():
+    for adj in edge_list:
+        graph.addEdge(edge_id_count, node_id, adj)
+        edge_id_count += 1
+        
+# generating output gexf 
+output_file = open("fbNet.gexf", "w")
+gexf.write(output_file)

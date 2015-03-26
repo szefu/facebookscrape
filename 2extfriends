@@ -1,0 +1,186 @@
+from bs4 import BeautifulSoup
+from selenium import webdriver
+from pyvirtualdisplay import Display
+from selenium.webdriver.common.keys import Keys
+import ast
+import re
+import time
+import threading
+
+display = Display(visible=0, size=(1366,768))
+display.start()
+
+p = re.compile(r'<.*?>')
+
+num = raw_input("Enter the number of friends you want to process\n")
+num = int(num)
+
+#num = 2*num
+#print num
+f = open('friends.txt', 'r')
+lines = f.readlines()
+g = open('frnames.txt', 'w')
+uidstoprocess = []
+
+i = 0
+c = 0
+for line in lines:
+    #print i
+    if i >= num:
+        break
+
+    uid = ""
+    i = i + 1
+    div = str(line)
+    soup = BeautifulSoup(div)
+    soup.prettify()
+    uid = soup.find_all('a')
+    name = p.sub('', str(uid[0]))
+    #name = name.encode('utf-8')
+    try:
+        dat = uid[0]['data-gt']
+    except:
+        d = uid[0]['ajaxify']
+        l = d.split('=')
+        dat = l[-1]
+        uid = dat
+        print dat, name
+        uidstoprocess.append(uid)
+        g.write(str(uid) + ' : ' + str(name) + '\n')
+        continue
+    dat = ast.literal_eval(uid[0]['data-gt'])
+    
+    uid = dat['engagement']['eng_tid']
+    uidstoprocess.append(uid)
+    print uid, name
+    g.write(str(uid) + ' : ' + str(name) + '\n')
+f.close()
+g.close()
+print len(uidstoprocess)
+
+
+######### login portion ##############
+#uname = raw_input("Enter your username:\n")
+#pw = raw_input("Enter your password:\n")
+cr = open('credentials.txt', 'r')
+det = cr.readlines()
+if len(det) == 2:
+    uname = str(det[0].strip())
+    pw = str(det[1].strip())
+else:
+    print "Error occured. Couldn't read credentials.txt"
+    exit(0)
+    
+driver = webdriver.Firefox()
+driver.set_page_load_timeout(20)
+print "Driver initialized"
+
+try:
+    driver.get("https://www.facebook.com")
+except:
+    print "timeout has occured. please rerun the script."
+
+inp = driver.find_element_by_id('email')
+inp.send_keys(uname)
+
+pas = driver.find_element_by_id('pass')
+pas.send_keys(pw)
+pas.send_keys(Keys.ENTER)
+#btn = driver.find_element_by_id('u_0_l')
+#btn.click()
+
+
+######################################
+
+time.sleep(3)
+print "Processing mutual friends data"
+mutfrdict = {}
+
+def over(h):
+    h = 1
+f = open('mutfr.txt', 'w')
+baseurl = "https://www.facebook.com/browse/mutual_friends/?uid="
+for u in uidstoprocess:
+    url = baseurl + str(u)
+    h = 0
+    try:
+        driver.get(url)
+    except:
+        print "Timeout occured. Reinitializing the driver..."
+        driver.quit()
+        driver = webdriver.Firefox()
+        driver.set_page_load_timeout(20)
+        print "Driver reinitialized"
+
+        driver.get("https://www.facebook.com")
+        time.sleep(3)
+        inp = driver.find_element_by_id('email')
+        inp.send_keys(uname)
+
+        pas = driver.find_element_by_id('pass')
+        pas.send_keys(pw)
+        
+        #pas.send_keys(Keys.ENTER)
+        btn = driver.find_element_by_id('u_0_l')
+        btn.click()
+        time.sleep(3)
+        driver.get(url)
+    
+    prior = 0
+    count = 0
+    driver.save_screenshot('screen1.png')
+    while True:
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        time.sleep(0.25)
+        wind = driver.find_element_by_xpath("/html/body[1]")
+        size = wind.size
+
+        current = int(size['height'])
+   
+        if count == 5:
+            break
+        if current == prior:
+            count = count + 1
+        else:
+            count = 0
+        prior = current
+
+    
+    driver.save_screenshot('screen.png')
+    page = driver.page_source
+    soup = BeautifulSoup(page)
+    soup.prettify()
+    divs = soup.find_all('div',{'class':'fsl'})
+    print len(divs)
+
+    mutfr = []
+    for div in divs:
+        div = str(div)
+        soup = BeautifulSoup(div)
+        soup.prettify()
+        uid = soup.find_all('a')
+        name = p.sub('', str(uid[0]))
+        try:
+            dat = uid[0]['data-gt']
+            dat = ast.literal_eval(uid[0]['data-gt'])
+            uid = dat['engagement']['eng_tid']
+            #print uid, name
+        except:
+            d = uid[0]['ajaxify']
+            l = d.split('=')
+            dat = l[-1]
+            uid = dat
+            #print dat, name
+            
+        if uid in uidstoprocess:
+            mutfr.append(uid)
+
+    f.write(str(u)+' : ')
+    f.write(str(mutfr))
+    f.write("\n\n")
+    mutfrdict[u] = mutfr
+
+
+
+f.close()
+
